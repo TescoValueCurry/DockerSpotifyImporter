@@ -4,7 +4,7 @@ import json
 import time
 from typing import List, Dict
 
-CONFIG_PATH = "config/config.json"
+CONFIG_PATH = "/config/config.json"
 
 
 def get_spotify_token(config_path: str = CONFIG_PATH) -> str:

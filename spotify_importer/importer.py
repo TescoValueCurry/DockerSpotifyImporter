@@ -3,12 +3,14 @@ import time
 import requests
 
 from spotify_downloader.downloader import download_playlist
-from sync import run_sync_job
 from .spotify_api import get_spotify_token, get_playlist_tracks, get_all_album_tracks, get_artist_albums, \
     get_spotify_playlist_info
 from sqlalchemy.orm import Session
 import db_operations
 from db_operations import add_wanted_track
+from db_operations import get_playlists
+from database import SessionLocal
+
 
 
 def get_spotify_playlist_info_with_retries(url, token, retries=3, backoff=2):
@@ -26,8 +28,14 @@ def get_spotify_playlist_info_with_retries(url, token, retries=3, backoff=2):
 
 
 def import_playlist_and_sync(url: str, mode: str, db: Session):
-    import_playlist(url, mode, db)
-    run_sync_job()
+    db = SessionLocal()
+    playlists = get_playlists(db)
+
+    for playlist in playlists:
+        print(f"Importing playlist: {playlist['name']} ({playlist['url']})")
+        import_playlist(playlist["url"], playlist["mode"], db)
+        download_playlist(playlist["name"])
+
 
 
 def import_playlist(url: str, mode: str, db: Session):
