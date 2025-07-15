@@ -1,0 +1,13 @@
+services:
+  spotify-sync:
+    image: spotify-sync:latest   # Replace with your built image name
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/config         # Your config.json mounted here
+      - ./data:/data             # SQLite DB and other data
+      - ./downloads:/downloads   # Music downloads folder
+    environment:
+      - CONFIG_PATH=/config/config.json
+    restart: unless-stopped

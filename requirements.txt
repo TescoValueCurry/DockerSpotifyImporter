@@ -1,0 +1,9 @@
+fastapi>=0.116.1
+sqlalchemy>=2.0.41
+uvicorn[standard]
+python-multipart
+jinja2
+requests
+yt-dlp
+pymysql
+mutagen

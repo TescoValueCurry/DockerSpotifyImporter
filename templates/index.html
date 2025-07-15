@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spotify Playlist Importer</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Spotify Playlist Importer</h1>
+    <form id="playlist-form" action="/add_playlist" method="post">
+      <label for="url">Playlist URL:</label><br />
+      <input type="text" id="url" name="url" required /><br /><br />
+
+      <label for="mode">Import Mode:</label><br />
+      <select id="mode" name="mode">
+        <option value="playlist_only">Only songs from playlist</option>
+        <option value="full_artist">All albums by artists</option>
+      </select><br /><br />
+
+      <input type="submit" value="Add Playlist" />
+    </form>
+
+    <h2>Existing Playlists</h2>
+    <ul id="playlists-list">
+      <li>Loading playlists...</li>
+    </ul>
+    <button id="refresh-playlists">Refresh Playlists</button>
+  </div>
+
+  <script src="/static/scripts.js"></script>
+</body>
+</html>
