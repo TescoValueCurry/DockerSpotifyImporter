@@ -12,7 +12,6 @@ from db_operations import get_playlists
 from database import SessionLocal
 
 
-
 def get_spotify_playlist_info_with_retries(url, token, retries=3, backoff=2):
     for attempt in range(1, retries + 1):
         try:
@@ -28,14 +27,14 @@ def get_spotify_playlist_info_with_retries(url, token, retries=3, backoff=2):
 
 
 def import_playlist_and_sync(url: str, mode: str, db: Session):
+    import_playlist(url, mode, db)
+
     db = SessionLocal()
     playlists = get_playlists(db)
 
     for playlist in playlists:
         print(f"Importing playlist: {playlist['name']} ({playlist['url']})")
-        import_playlist(playlist["url"], playlist["mode"], db)
         download_playlist(playlist["name"])
-
 
 
 def import_playlist(url: str, mode: str, db: Session):
@@ -85,6 +84,9 @@ def import_playlist(url: str, mode: str, db: Session):
 
     # Add all wanted tracks
     for track in wanted:
+        if "live at" in track["track_name"].lower():
+            print(f"Skipping live track: {track['track_name']} by {track['artist_name']}")
+            continue
         add_wanted_track(
             db=db,
             song_name=track["track_name"],
@@ -92,6 +94,7 @@ def import_playlist(url: str, mode: str, db: Session):
             album_name=track["album_name"],
         )
 
-    playlist.import_status = "imported"
+    playlist.import_status = "imported" # pyright: ignore[reportAttributeAccessIssue]
+    print(f"Playlist {playlist_name} imported successfully with {len(wanted)} tracks.")
 
     db.commit()

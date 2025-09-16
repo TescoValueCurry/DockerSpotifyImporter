@@ -14,6 +14,7 @@ class Settings:
     SYNC_INTERVAL_HOURS = config["sync_interval_hours"]
     DATABASE_URL = f"sqlite:///{config['database_path']}"
     DOWNLOADS_PATH = config["downloads_path"]
+    COOKIES_PATH = config["cookies_path"]
 
 
 settings = Settings()

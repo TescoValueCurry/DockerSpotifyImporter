@@ -1,22 +1,50 @@
 import os
 import threading
-import yt_dlp
+import subprocess
+from queue import Queue
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from config import settings
 from models import WantedTrack
-from spotify_downloader.metadataFixer import apply_metadata_from_spotify
 
-
-# Global lock for DB writes
+# Global lock for DB writes (will still use queue for safer writes)
 db_write_lock = threading.Lock()
+
+# Queue for DB updates
+write_queue = Queue()
+
+
+def db_writer():
+    """Thread that processes DB write tasks sequentially."""
+    db = SessionLocal()
+    while True:
+        task = write_queue.get()
+        if task is None:  # Sentinel to stop the writer thread
+            break
+
+        track_entry, downloaded, reset_downloading, attempts_increment = task
+        try:
+            if downloaded:
+                track_entry.downloaded = True
+            if reset_downloading:
+                track_entry.downloading = False
+            if attempts_increment:
+                track_entry.attempts += 1
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"DB write failed: {e}")
+        finally:
+            write_queue.task_done()
+            print(f"DB write completed for: {track_entry.song_name}")
+    db.close()
 
 
 def download_audio(track):
-    downloaded = False
     db = SessionLocal()
     track_entry = None
+
     try:
         track_entry = db.query(WantedTrack).filter_by(
             song_name=track["song_name"],
@@ -40,70 +68,55 @@ def download_audio(track):
             print(f"Skipping {track_entry.song_name} (3 attempts reached)")
             return
 
-        # Lock all writes to the DB to prevent concurrency issues
-        with db_write_lock:
-            track_entry.downloading = True
-            track_entry.attempts += 1
-            db.commit()
+        # Mark as downloading and increment attempts via writer queue
+        write_queue.put((track_entry, False, True, True))
 
         artist_dir = os.path.join(settings.DOWNLOADS_PATH, track_entry.artist_name)
         album_dir = os.path.join(artist_dir, track_entry.album_name)
         os.makedirs(album_dir, exist_ok=True)
 
-        filename = f"{track_entry.song_name}"
-        download_path = os.path.join(album_dir, filename)
+        search_query = f"{track_entry.song_name} - {track_entry.artist_name}"
+        print(f"Downloading: {search_query}")
 
-        ydl_opts = {
-            "format": "bestaudio/best",
-            "outtmpl": download_path,
-            "postprocessors": [{
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "192",
-            }],
-            "quiet": True,
-        }
+        # Run SpotDL CLI
+        result = subprocess.run(
+            ["spotdl", "download", search_query, "--output", album_dir],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([f"ytsearch:{track_entry.artist_name} {track_entry.song_name}"])
+        if result.returncode != 0:
+            # print("=" * 60)
+            print(f"SpotDL failed for: {search_query}")
+            print(f"Exit Code: {result.returncode}")
+            # if result.stdout.strip():
+            #     print("\n--- STDOUT ---")
+            #     print(result.stdout.strip())
+            # if result.stderr.strip():
+            #     print("\n--- STDERR ---")
+            #     print(result.stderr.strip())
+            # print("=" * 60)
 
-        with db_write_lock:
-            track_entry.path = download_path + ".mp3"
-            track_entry.downloaded = True
-            track_entry.downloading = False
-            db.commit()
+            # Reset downloading flag via writer queue
+            write_queue.put((track_entry, False, True, False))
+            return
 
-        downloaded = True
+        # Successful download
+        write_queue.put((track_entry, True, True, False))
+        print(f"Successfully downloaded: {search_query}")
 
     except Exception as e:
         print(f"Download failed for {track['song_name']}: {e}")
         if track_entry:
-            try:
-                with db_write_lock:
-                    db.rollback()
-                    track_entry.downloading = False
-                    db.commit()
-            except Exception as e2:
-                print(f"Failed to reset downloading flag: {e2}")
-                db.rollback()
+            # Reset downloading flag via writer queue
+            write_queue.put((track_entry, False, True, False))
     finally:
-        if track_entry:
-            path = track_entry.path
-            song_name = track_entry.song_name
-            artist_name = track_entry.artist_name
-        else:
-            path = song_name = artist_name = None
-
         db.close()
-
-        if downloaded and path and song_name and artist_name:
-            try:
-                apply_metadata_from_spotify(path, song_name, artist_name)
-            except Exception as e:
-                print(f"Metadata application failed: {e}", flush=True)
 
 
 def download_playlist(playlist_name: str):
+    print(f"Starting download for playlist: {playlist_name}")
     with SessionLocal() as db:
         tracks = db.query(WantedTrack).filter(
             WantedTrack.downloaded == False,
@@ -120,5 +133,17 @@ def download_playlist(playlist_name: str):
         for t in tracks
     ]
 
+    # Start the writer thread
+    writer_thread = threading.Thread(target=db_writer, daemon=True)
+    writer_thread.start()
+
+    # Download tracks in parallel
     with ThreadPoolExecutor() as executor:
         executor.map(download_audio, track_dicts)
+
+    # Wait for all write tasks to finish
+    write_queue.join()
+    # Stop writer thread
+    write_queue.put(None)
+    writer_thread.join()
+    print(f"Finished downloading playlist: {playlist_name}")

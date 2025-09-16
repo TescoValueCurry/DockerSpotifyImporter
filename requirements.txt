@@ -1,9 +1,8 @@
-fastapi>=0.116.1
 sqlalchemy>=2.0.41
 uvicorn[standard]
 python-multipart
 jinja2
-requests
+requests>=2.32.4
 yt-dlp
 pymysql
-mutagen
+mutagen>=1.47.0
