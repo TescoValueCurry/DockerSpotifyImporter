@@ -5,11 +5,8 @@ import requests
 from spotify_downloader.downloader import download_playlist
 from .spotify_api import get_spotify_token, get_playlist_tracks, get_all_album_tracks, get_artist_albums, \
     get_spotify_playlist_info
-from sqlalchemy.orm import Session
 import db_operations
-from db_operations import add_wanted_track
-from db_operations import get_playlists
-from database import SessionLocal
+from db_worker import db_worker
 
 
 def get_spotify_playlist_info_with_retries(url, token, retries=3, backoff=2):
@@ -26,42 +23,35 @@ def get_spotify_playlist_info_with_retries(url, token, retries=3, backoff=2):
     raise Exception("Max retries reached for fetching playlist info")
 
 
-def import_playlist_and_sync(url: str, mode: str, db: Session):
-    import_playlist(url, mode, db)
-
-    db = SessionLocal()
-    playlists = get_playlists(db)
-
+def import_playlist_and_sync(url: str, mode: str):
+    import_playlist(url, mode)
+    playlists = db_worker.submit(db_operations.get_playlists)
+    if not playlists:
+        playlists = []
     for playlist in playlists:
         print(f"Importing playlist: {playlist['name']} ({playlist['url']})")
         download_playlist(playlist["name"])
 
 
-def import_playlist(url: str, mode: str, db: Session):
+def import_playlist(url: str, mode: str):
     token = get_spotify_token()
-
     playlist_info = get_spotify_playlist_info_with_retries(url, token)
     playlist_name = playlist_info.get("name", "Unknown Playlist")
-
-    playlist = db_operations.add_playlist(db, url, mode, name=playlist_name)
-
+    playlist = db_worker.submit(db_operations.add_playlist, url, mode, playlist_name)
     playlist_tracks = get_playlist_tracks(url, token)
     wanted = []
-
     if mode == "playlist_only":
         for track in playlist_tracks:
             album_id = track["album"]["id"]
             album_name = track["album"]["name"]
             artist_name = track["artists"][0]["name"]
             album_tracks = get_all_album_tracks(album_id, token)
-
             for t in album_tracks:
                 wanted.append({
                     "track_name": t["name"],
                     "album_name": album_name,
                     "artist_name": artist_name
                 })
-
     elif mode == "full_artist":
         for track in playlist_tracks:
             artist = track["artists"][0]
@@ -69,7 +59,6 @@ def import_playlist(url: str, mode: str, db: Session):
             artist_name = artist["name"]
             albums = get_artist_albums(artist_id, token)
             seen_albums = set()
-
             for album in albums:
                 if album["id"] in seen_albums:
                     continue
@@ -81,20 +70,12 @@ def import_playlist(url: str, mode: str, db: Session):
                         "album_name": album["name"],
                         "artist_name": artist_name
                     })
-
-    # Add all wanted tracks
+    # add all wanted tracks
     for track in wanted:
         if "live at" in track["track_name"].lower():
             print(f"Skipping live track: {track['track_name']} by {track['artist_name']}")
             continue
-        add_wanted_track(
-            db=db,
-            song_name=track["track_name"],
-            artist_name=track["artist_name"],
-            album_name=track["album_name"],
-        )
-
-    playlist.import_status = "imported" # pyright: ignore[reportAttributeAccessIssue]
-    print(f"Playlist {playlist_name} imported successfully with {len(wanted)} tracks.")
-
-    db.commit()
+        db_worker.submit(db_operations.add_wanted_track, track["track_name"], track["artist_name"], track["album_name"])
+    if playlist:
+        playlist.import_status = "imported" # pyright ignore reportattributeaccessissue
+    print(f"playlist {playlist_name} imported successfully with {len(wanted)} tracks")

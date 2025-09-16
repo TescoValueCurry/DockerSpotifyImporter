@@ -9,7 +9,7 @@ CONFIG_PATH = "/config/config.json"
 
 def get_spotify_token(config_path: str = CONFIG_PATH) -> str:
     """
-    Get OAuth token using Client Credentials Flow
+    get oauth token using client credentials flow
     """
     with open(config_path) as f:
         config = json.load(f)
@@ -31,8 +31,8 @@ def get_spotify_token(config_path: str = CONFIG_PATH) -> str:
 
 def spotify_get_with_retry(url: str, headers: dict, max_retries=5) -> dict:
     """
-    GET request with handling for 429 rate limiting from Spotify API.
-    Retries up to max_retries times with respect to Retry-After header.
+    get request with handling for 429 rate limiting from spotify api
+    retries up to max_retries times with respect to retryafter header
     """
     retries = 0
     while True:
@@ -80,14 +80,14 @@ def get_all_album_tracks(album_id: str, token: str) -> List[Dict]:
 
 
 def get_spotify_playlist_info(playlist_url: str, token: str):
-    # Extract playlist ID from URL
+    # extract playlist id from url
     playlist_id = playlist_url.split("/")[-1].split("?")[0]
 
     headers = {"Authorization": f"Bearer {token}"}
     url = f"https://api.spotify.com/v1/playlists/{playlist_id}"
     response = requests.get(url, headers=headers)
     response.raise_for_status()
-    return response.json()  # Contains playlist name, description, etc.
+    return response.json()  # contains playlist name description etc
 
 
 def get_artist_albums(artist_id: str, token: str) -> List[Dict]:

@@ -8,8 +8,8 @@ class Playlist(Base):
     id = Column(Integer, primary_key=True, index=True)
     url = Column(String, unique=True, index=True)
     name = Column(String)
-    mode = Column(String)  # 'songs' or 'artist'
-    import_status = Column(String, default="importing")  # 'importing', 'imported', or 'failed'
+    mode = Column(String)  # songs or artist
+    import_status = Column(String, default="importing")  # importing imported or failed
 
 
 

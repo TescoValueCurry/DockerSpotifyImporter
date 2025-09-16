@@ -9,6 +9,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
 
+print("Piece of massive smelly shit version 724 billion started")
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Spotify Playlist Importer")

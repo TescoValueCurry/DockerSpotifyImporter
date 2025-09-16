@@ -5,7 +5,7 @@ import models
 def add_playlist(db: Session, url: str, mode: str, name: str = None):
     existing = db.query(models.Playlist).filter(models.Playlist.url == url).first()
     if existing:
-        existing.mode = mode  # Update the mode
+        existing.mode = mode  # update the mode
         if name:
             existing.name = name
         db.commit()
@@ -24,7 +24,7 @@ def get_playlists(db: Session):
         {
             "id": p.id,
             "url": p.url,
-            "name": p.name,                # <-- add this line
+            "name": p.name,  # add this line
             "mode": p.mode,
             "import_status": p.import_status
         }
