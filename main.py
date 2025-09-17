@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
 
-print("Piece of massive smelly shit version 724 billion started")
+print("Piece of massive smelly shit version 5678 billion started AAAAAAA", flush=True)
 
 Base.metadata.create_all(bind=engine)
 

@@ -15,7 +15,7 @@ def get_spotify_playlist_info_with_retries(url, token, retries=3, backoff=2):
             return get_spotify_playlist_info(url, token)
         except requests.exceptions.HTTPError as e:
             if e.response.status_code >= 500:
-                print(f"Attempt {attempt} failed with {e}. Retrying in {backoff} seconds...")
+                print(f"Attempt {attempt} failed with {e}. Retrying in {backoff} seconds...", flush=True)
                 time.sleep(backoff)
                 backoff *= 2  # exponential backoff
             else:
@@ -29,7 +29,7 @@ def import_playlist_and_sync(url: str, mode: str):
     if not playlists:
         playlists = []
     for playlist in playlists:
-        print(f"Importing playlist: {playlist['name']} ({playlist['url']})")
+        print(f"Importing playlist: {playlist['name']} ({playlist['url']})", flush=True)
         download_playlist(playlist["name"])
 
 
@@ -73,9 +73,9 @@ def import_playlist(url: str, mode: str):
     # add all wanted tracks
     for track in wanted:
         if "live at" in track["track_name"].lower():
-            print(f"Skipping live track: {track['track_name']} by {track['artist_name']}")
+            print(f"Skipping live track: {track['track_name']} by {track['artist_name']}", flush=True)
             continue
         db_worker.submit(db_operations.add_wanted_track, track["track_name"], track["artist_name"], track["album_name"])
     if playlist:
         playlist.import_status = "imported" # pyright ignore reportattributeaccessissue
-    print(f"playlist {playlist_name} imported successfully with {len(wanted)} tracks")
+    print(f"playlist {playlist_name} imported successfully with {len(wanted)} tracks", flush=True)

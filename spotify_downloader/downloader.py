@@ -1,7 +1,9 @@
 
+
 import os
 import threading
 import subprocess
+import time
 from concurrent.futures import ThreadPoolExecutor
 from config import settings
 from models import WantedTrack
@@ -28,19 +30,20 @@ def reset_downloading(db, track_entry):
     track_entry.downloading = False
 
 def download_audio(track):
+    global download_counter, download_start_time, download_total_tracks
     # get track entry from db
     track_entry = db_worker.submit(get_track_entry, track)
     if not track_entry:
-        print(f"Track not found: {track}")
+        print(f"Track not found: {track}", flush=True)
         return
     if track_entry.downloaded:
-        print(f"Already downloaded: {track_entry.song_name}")
+        print(f"Already downloaded: {track_entry.song_name}", flush=True)
         return
     if track_entry.downloading:
-        print(f"Already downloading: {track_entry.song_name}")
+        print(f"Already downloading: {track_entry.song_name}", flush=True)
         return
     if track_entry.attempts >= 3:
-        print(f"Skipping {track_entry.song_name} (3 attempts reached)")
+        print(f"Skipping {track_entry.song_name} (3 attempts reached)", flush=True)
         return
 
     # mark as downloading and increment attempts
@@ -62,13 +65,25 @@ def download_audio(track):
             text=True
         )
         if result.returncode != 0:
-            print(f"Download failed for {track['song_name']}: {result.returncode}")
+            print(f"Download failed for {track['song_name']}: {result.returncode}", flush=True)
             db_worker.submit(reset_downloading, track_entry)
             return
-        print(f"Successfully downloaded: {search_query}")
+        download_counter += 1
+        elapsed = time.time() - download_start_time if download_start_time else 0
+        rate = (download_counter / elapsed * 60) if elapsed > 0 else 0
+        songs_left = download_total_tracks - download_counter if download_total_tracks is not None else '?'
+        msg = f"Successfully downloaded: {search_query} ({download_counter} downloaded this session)"
+        if download_counter % 5 == 0:
+            if rate > 0 and isinstance(songs_left, int) and songs_left > 0:
+                eta_min = songs_left / rate
+                eta_str = f" ~{int(eta_min)} min left"
+            else:
+                eta_str = ""
+            msg += f" | {rate:.2f} songs/min, {songs_left} left{eta_str}"
+        print(msg, flush=True)
         db_worker.submit(mark_downloaded, track_entry)
     except Exception as e:
-        print(f"Download failed for {track['song_name']}: {e}")
+        print(f"Download failed for {track['song_name']}: {e}", flush=True)
         db_worker.submit(reset_downloading, track_entry)
 
 
@@ -80,10 +95,14 @@ def get_tracks_for_download(db):
     ).all()
 
 def download_playlist(playlist_name: str):
-    print(f"Starting download for playlist: {playlist_name}")
+    global download_counter, download_start_time, download_total_tracks
+    download_counter = 0
+    download_start_time = time.time()
+    print(f"Starting download for playlist: {playlist_name}", flush=True)
     tracks = db_worker.submit(get_tracks_for_download)
     if not tracks:
         tracks = []
+    download_total_tracks = len(tracks)
     track_dicts = [
         {
             "song_name": t.song_name,
@@ -94,4 +113,4 @@ def download_playlist(playlist_name: str):
     ]
     with ThreadPoolExecutor() as executor:
         executor.map(download_audio, track_dicts)
-    print(f"Finished downloading playlist: {playlist_name}")
+    print(f"Finished downloading playlist: {playlist_name}", flush=True)

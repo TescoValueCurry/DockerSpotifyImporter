@@ -7,12 +7,12 @@ from spotify_importer.importer import import_playlist
 
 
 def run_sync_job():
-    print("Running sync job...")
+    print("Running sync job...", flush=True)
     playlists = db_worker.submit(get_playlists)
     if not playlists:
         playlists = []
     for playlist in playlists:
-        print(f"Importing playlist: {playlist['name']} ({playlist['url']})")
+        print(f"Importing playlist: {playlist['name']} ({playlist['url']})", flush=True)
         import_playlist(playlist["url"], playlist["mode"])
         download_playlist(playlist["name"])
 

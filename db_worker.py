@@ -36,13 +36,13 @@ class DBWorker(threading.Thread):
         self.queue = Queue()
         self.db = SessionLocal()
         self.running = True
-    print('DBWorker initialized')
+        print('DBWorker initialized', flush=True)
 
     def run(self):
         while self.running:
             req = self.queue.get()
             if req is None:
-                print('db worker received shutdown signal')
+                print('db worker received shutdown signal', flush=True)
                 break
             func_name = getattr(req.func, '__name__', str(req.func))
             # print(f'db worker received request: {func_name} args={req.args} kwargs={req.kwargs}')
@@ -59,7 +59,7 @@ class DBWorker(threading.Thread):
             finally:
                 # print(f'db worker finished: {func_name}')
                 self.queue.task_done()
-        print('db worker closed session')
+        print('db worker closed session', flush=True)
         self.db.close()
 
     def submit(self, func, *args, wait_for_result=True, **kwargs):
@@ -74,7 +74,7 @@ class DBWorker(threading.Thread):
 
 
     def stop(self):
-        print('Stopping DBWorker')
+        print('Stopping DBWorker', flush=True)
         self.running = False
         self.queue.put(None)
 
