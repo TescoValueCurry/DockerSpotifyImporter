@@ -105,5 +105,42 @@ spotify-sync:
 - The app will skip tracks that have failed to download 3 times.
 - You can customize settings in `config.py`.
 
+## Example Build Script (Windows)
+
+If you want to automatically increment a build number each time you build, you can use a batch script like this:
+
+```bat
+@echo off
+cd /d "<your-project-directory>"
+
+REM If build_number.py doesn't exist, create it with 1
+if not exist build_number.py echo BUILD_NUMBER = 1 > build_number.py
+
+REM Extract the build number from build_number.py
+for /f "tokens=3" %%A in ('findstr /b /c:"BUILD_NUMBER = " build_number.py') do set BUILDNUM=%%A
+set /a BUILDNUM=BUILDNUM+1
+
+REM Write the incremented build number back to build_number.py
+>build_number.py echo BUILD_NUMBER = %BUILDNUM%
+
+echo Build number updated to: %BUILDNUM%
+echo (build_number.py has been changed)
+
+echo Building Docker image...
+docker build -t yourimage:latest .
+
+echo Tagging Docker image...
+docker tag yourimage:latest yourimage:latest
+
+echo Pushing Docker image...
+docker push yourimage:latest
+
+echo Done!
+pause
+```
+
+- Replace `<your-project-directory>` with your actual project path.
+- This script will increment the build number in `build_number.py` and print the new version each time you build.
+
 ## License
 MIT License
