@@ -3,6 +3,3 @@ uvicorn[standard]
 python-multipart
 jinja2
 requests>=2.32.4
-yt-dlp
-pymysql
-mutagen>=1.47.0
