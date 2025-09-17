@@ -1,3 +1,4 @@
+
 import threading
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +10,12 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi import Request
 
-print("Piece of massive smelly shit version 5678 billion started AAAAAAA", flush=True)
+try:
+    from build_number import BUILD_NUMBER
+except ImportError:
+    BUILD_NUMBER = 'unknown'
+
+print(f"DockerSpotifyDownloader build {BUILD_NUMBER}", flush=True)
 
 Base.metadata.create_all(bind=engine)
 

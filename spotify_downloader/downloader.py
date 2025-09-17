@@ -94,11 +94,19 @@ def get_tracks_for_download(db):
         WantedTrack.attempts < 3,
     ).all()
 
+def reset_all_downloading(db):
+    db.query(WantedTrack).update({WantedTrack.downloading: False})
+    db.commit()
+
 def download_playlist(playlist_name: str):
     global download_counter, download_start_time, download_total_tracks
     download_counter = 0
     download_start_time = time.time()
     print(f"Starting download for playlist: {playlist_name}", flush=True)
+
+    # clear the downloading flags for all tracks to fix stuck ones
+    db_worker.submit(reset_all_downloading)
+
     tracks = db_worker.submit(get_tracks_for_download)
     if not tracks:
         tracks = []
