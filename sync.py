@@ -12,7 +12,7 @@ def run_sync_job():
     if not playlists:
         playlists = []
     for playlist in playlists:
-        print(f"Importing playlist: {playlist['name']} ({playlist['url']})", flush=True)
+        print(f"Refreshing playlist: {playlist['name']} ({playlist['url']})", flush=True)
         import_playlist(playlist["url"], playlist["mode"])
         download_playlist(playlist["name"])
 

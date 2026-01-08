@@ -7,11 +7,6 @@ from db_worker import db_worker
 
 router = APIRouter()
 
-
-
-
-
-
 @router.post("/add_playlist")
 def add_playlist(
     background_tasks: BackgroundTasks,
@@ -20,8 +15,6 @@ def add_playlist(
 ):
     background_tasks.add_task(import_playlist_and_sync, url, mode)
     return RedirectResponse(url="/", status_code=303)
-
-
 
 @router.get("/playlists")
 def list_playlists():
