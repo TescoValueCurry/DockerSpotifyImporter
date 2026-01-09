@@ -21,9 +21,11 @@ def mark_downloading(db, track_entry):
     track_entry.downloading = True
     track_entry.attempts += 1
 
-def mark_downloaded(db, track_entry):
+def mark_downloaded(db, track_entry, path):
     track_entry.downloaded = True
     track_entry.downloading = False
+    track_entry.path = path  # store actual file path
+
 
 def reset_downloading(db, track_entry):
     track_entry.downloading = False
@@ -80,7 +82,8 @@ def download_audio(track):
                 eta_str = ""
             msg += f" | {rate:.2f} songs/min, {songs_left} left{eta_str}"
         print(msg, flush=True)
-        db_worker.submit(mark_downloaded, track_entry)
+        file_path = os.path.join(album_dir, f"{track_entry.song_name}.mp3")  # or detect extension
+        db_worker.submit(mark_downloaded, track_entry, file_path)
     except Exception as e:
         print(f"Download failed for {track['song_name']}: {e}", flush=True)
         db_worker.submit(reset_downloading, track_entry)

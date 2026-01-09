@@ -61,7 +61,7 @@ def get_playlist_track_ids(playlist_url: str, token: str):
     url = (
         f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
         "?limit=100"
-        "&fields=items(added_at,track(id)),next"
+        "&fields=items(added_at,track(id,name,artists(id,name),album(id,name))),next"
     )
 
     tracks = []
@@ -71,6 +71,9 @@ def get_playlist_track_ids(playlist_url: str, token: str):
             {
                 "id": item["track"]["id"],
                 "added_at": item["added_at"],
+                "name": item["track"]["name"],
+                "artists": item["track"].get("artists", []),
+                "album": item["track"].get("album", {}),
             }
             for item in data["items"]
             if item.get("track") and item["track"].get("id")

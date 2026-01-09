@@ -10,6 +10,7 @@ class Playlist(Base):
     name = Column(String)
     mode = Column(String)  # songs or artist
     import_status = Column(String, default="importing")  # importing imported or failed
+    snapshot_id = Column(String, nullable=True)  # <- add this
 
 
 
