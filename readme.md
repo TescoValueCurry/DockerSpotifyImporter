@@ -1,6 +1,6 @@
 # DockerSpotifyImporter
 
-DockerSpotifyImporter is a tool for downloading and importing Spotify playlists, designed to run in a Dockerized environment. It manages playlists, downloads tracks using `spotdl`, and organizes them into a local directory structure. The project uses a SQLite database to track wanted tracks and download status.
+DockerSpotifyImporter is a tool for downloading and importing Spotify playlists, designed to run in a Dockerised environment. It manages playlists, downloads tracks using `spotdl`, and organizes them into a local directory structure. The project uses a SQLite database to track wanted tracks and download status.
 
 ## Features
 - Download Spotify playlists and tracks
