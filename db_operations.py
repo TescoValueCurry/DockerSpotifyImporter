@@ -77,11 +77,62 @@ def add_wanted_track(db: Session, song_name: str, artist_name: str, album_name: 
     db.refresh(new_track)
     return new_track
 
+def add_local_track(db: Session, song_name: str, artist_name: str, album_name: str, path: str):
+    """
+    Update an existing track's path and downloaded status if it exists.
+    Returns the track object, or None if not found.
+    """
+    existing = db.query(models.WantedTrack).filter_by(
+        song_name=song_name,
+        artist_name=artist_name,
+        album_name=album_name
+    ).first()
+
+    if existing:
+        return existing
+
+    new_track = models.WantedTrack(
+        song_name=song_name,
+        artist_name=artist_name,
+        album_name=album_name,
+        path=path,
+        downloaded=True,
+        attempts=0
+    )
+    db.add(new_track)
+    db.commit()
+    db.refresh(new_track)
+    return new_track
+
+def get_track_by_path(db: Session, path: str, song_name: str, artist_name: str, album_name: str):
+    """
+    Check if a track exists in the DB by its path.
+    If no match by path, check by song_name, artist_name, and album_name.
+
+    Returns:
+        The track object if found, else None
+    """
+    # First, try to find a track by path
+    track = db.query(models.WantedTrack).filter(models.WantedTrack.path == path).first()
+    if track:
+        return track
+
+    # If no match by path, check by song_name, artist_name, and album_name
+    track = db.query(models.WantedTrack).filter_by(
+        song_name=song_name,
+        artist_name=artist_name,
+        album_name=album_name
+    ).first()
+
+    return track
+
 
 # Write operations (need commit)
 add_playlist.requires_commit = True
 add_wanted_track.requires_commit = True
+add_local_track.requires_commit = True
 
 # Read-only operations (do NOT commit)
 get_playlists.requires_commit = False
 get_playlist_by_url.requires_commit = False
+get_track_by_path.requires_commit = False

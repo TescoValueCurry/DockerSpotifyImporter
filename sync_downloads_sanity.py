@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 
+from db_operations import get_track_by_path
 from db_worker import db_worker
 import db_operations
 from config import settings
@@ -17,10 +18,15 @@ def get_all_db_tracks():
 def find_files_on_disk():
     """
     Scan DOWNLOADS_PATH for audio files.
-    Returns a dict keyed by (artist_name, song_name) -> full_path
-    Assumes filename format: "{artist} - {song}.{ext}"
+    Returns a list of dicts:
+    {
+        "artist_name": str,
+        "song_name": str,
+        "album_name": str,
+        "path": str
+    }
     """
-    disk_tracks = {}
+    disk_tracks = []
 
     for artist_name in os.listdir(settings.DOWNLOADS_PATH):
         artist_dir = os.path.join(settings.DOWNLOADS_PATH, artist_name)
@@ -45,9 +51,13 @@ def find_files_on_disk():
                 file_artist, song_name = name.split(" - ", 1)
 
                 # Trust directory artist name over filename
-                key = (artist_name, song_name)
                 full_path = os.path.join(album_dir, filename)
-                disk_tracks[key] = full_path
+                disk_tracks.append({
+                    "artist_name": artist_name,
+                    "song_name": song_name,
+                    "album_name": album_name,
+                    "path": full_path
+                })
 
     return disk_tracks
 
@@ -97,27 +107,39 @@ def sync_orphaned_and_missing_tracks():
             else:
                 print(f"File not found marked as undownloaded for DB entry: {track.song_name} - {track.artist_name}", flush=True)
 
-    # --- Step 3: Add orphaned files (exist on disk, not in DB at all) ---
-    for (artist_name, song_name), path in disk_tracks.items():
-        exists_in_db = db_worker.submit(
-            db_operations.get_wanted_track_by_artist_and_name,
-            artist_name,
-            song_name
+
+def fix_local_tracks():
+    added_count = 0
+    fixed_count = 0
+
+    # Get all files from disk
+    disk_tracks = find_files_on_disk()
+
+    for track in disk_tracks:
+        # Check if track exists in DB (through db_worker)
+        exists = db_worker.submit(
+            db_operations.get_track_by_path,
+            path=track["path"],
+            song_name=track["song_name"],
+            artist_name=track["artist_name"],
+            album_name=track["album_name"]
         )
-        if not exists_in_db:
+
+        if exists is None:
+            # Add the orphaned track through db_worker
             db_worker.submit(
-                db_operations.add_wanted_track,
-                song_name,
-                artist_name,
-                album_name=None,
-                downloaded=True,
-                path=path
+                db_operations.add_local_track,
+                track["song_name"],
+                track["artist_name"],
+                track["album_name"],
+                track["path"]
             )
             added_count += 1
-            print(f"Added orphaned track to DB: {song_name} - {artist_name}", flush=True)
+            print(f"Added orphaned track to DB: {track['song_name']} - {track['artist_name']}", flush=True)
 
-    print(f"Sanity check complete. Added: {added_count}, Fixed: {fixed_count}", flush=True)
+    print(f"Fixed local tracks. Added: {added_count}, Fixed: {fixed_count}", flush=True)
 
 
 if __name__ == "__main__":
-    sync_orphaned_and_missing_tracks()
+    # sync_orphaned_and_missing_tracks()
+    fix_local_tracks()
