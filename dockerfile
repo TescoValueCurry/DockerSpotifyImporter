@@ -13,7 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install SpotDL globally
-RUN pip install --no-cache-dir spotdl==4.4.0
+RUN pip install --no-cache-dir spotdl
 
 # Copy your app code
 COPY . .

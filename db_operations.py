@@ -126,6 +126,34 @@ def get_track_by_path(db: Session, path: str, song_name: str, artist_name: str, 
 
     return track
 
+def does_similar_song_exist(db: Session, song_name: str, artist_name: str, album_name: str | None = None):
+    """
+    Detect if a 'similar' song already exists.
+    Similar = same base title (before ' - ') for same artist.
+    """
+
+    # canonical by splitting on first " - "
+    def canonical(name: str):
+        parts = name.split(" - ", 1)
+        return parts[0].strip().lower()
+
+    base = canonical(song_name)
+
+    q = db.query(models.WantedTrack).filter(
+        models.WantedTrack.artist_name == artist_name
+    )
+
+    # optional album constraint (not required for correctness)
+    if album_name is not None:
+        q = q.filter(models.WantedTrack.album_name == album_name)
+
+    tracks = q.all()
+
+    for t in tracks:
+        if canonical(t.song_name) == base:
+            return t  # similar found
+
+    return None  # no similar
 
 # Write operations (need commit)
 add_playlist.requires_commit = True
@@ -136,3 +164,4 @@ add_local_track.requires_commit = True
 get_playlists.requires_commit = False
 get_playlist_by_url.requires_commit = False
 get_track_by_path.requires_commit = False
+does_similar_song_exist.requires_commit = False

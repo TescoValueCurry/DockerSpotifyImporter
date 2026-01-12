@@ -121,6 +121,10 @@ def import_playlist(url: str, mode: str):
                 f"Skipping live track: {track['track_name']} by {track['artist_name']}", flush=True
             )
             continue
+        similar = db_operations.does_similar_song_exist(track["track_name"], track["artist_name"])
+        if similar:
+            print("Skipping variant of already indexed song:", track["track_name"])
+            continue
         db_worker.submit(
             db_operations.add_wanted_track,
             track["track_name"],

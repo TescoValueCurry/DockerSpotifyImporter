@@ -4,7 +4,7 @@ import os
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
-from config import settings
+from config import settings, config
 from models import WantedTrack
 from db_worker import db_worker
 
@@ -55,15 +55,25 @@ def download_audio(track):
     os.makedirs(album_dir, exist_ok=True)
 
     search_query = f"{track_entry.song_name} - {track_entry.artist_name}"
-    # print(f"Downloading: {search_query}")
+    print(f"Downloading: {search_query}", flush=True)
+
+    env = os.environ.copy()
+    env["SPOTDL_SPOTIFY_CLIENT_ID"] = config["spotify_client_id"]
+    env["SPOTDL_SPOTIFY_CLIENT_SECRET"] = config["spotify_client_secret"]
 
     # download it with spotdl
     try:
         result = subprocess.run(
-            ["spotdl", "download", search_query, "--output", album_dir],
+            [
+                "spotdl",
+                "download",
+                search_query,
+                "--output", album_dir
+            ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
+            env=env
         )
         if result.returncode != 0:
             print(f"Download failed for {track['song_name']}: {result.returncode}", flush=True)
